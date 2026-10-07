@@ -220,3 +220,86 @@
     background-color: #fafafa;
   }
 }
+@layer components {
+  /* 下拉选择框：去掉系统自带的小箭头，换成统一风格的 */
+  .gc-select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 36px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386868b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 13px center;
+    background-size: 12px 12px;
+  }
+
+  .gc-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
+
+  .gc-btn-sm {
+    padding: 8px 15px;
+    font-size: 13px;
+  }
+
+  .gc-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 980px;
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    color: #c4300c;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .gc-danger:hover {
+    background-color: #fdeceb;
+  }
+
+  /* 标签小药丸 */
+  .gc-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 980px;
+    border: 1px solid #d2d2d7;
+    background-color: #ffffff;
+    padding: 7px 13px;
+    font-size: 13px;
+    color: #1d1d1f;
+    cursor: pointer;
+    transition: all 0.16s ease;
+  }
+
+  .gc-tag:hover {
+    border-color: #86868b;
+  }
+
+  .gc-tag[data-on="true"] {
+    border-color: #1d1d1f;
+    background-color: #1d1d1f;
+    color: #ffffff;
+  }
+}
+
+@keyframes gc-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gc-pop-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.gc-overlay {
+  animation: gc-fade-in 0.18s ease both;
+}
+
+.gc-panel {
+  animation: gc-pop-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}

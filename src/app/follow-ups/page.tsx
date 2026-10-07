@@ -1,23 +1,33 @@
-import { getCustomersWithSpending, getDueCustomers } from "@/lib/derived";
-import { getFollowUps } from "@/lib/data/follow-ups";
+"use client";
+
+import { useMemo } from "react";
+import { dueCustomers } from "@/lib/derived";
+import { useData } from "@/lib/store";
 import PageHeader from "@/components/ui/PageHeader";
 import FollowUpBoard, { type FollowUpRecord } from "@/components/follow-ups/FollowUpBoard";
+import LoadingState from "@/components/ui/LoadingState";
 
 export default function FollowUpsPage() {
-  const dueCustomers = getDueCustomers();
+  const { ready, customers, purchases, followUps } = useData();
 
-  const nameById = new Map(
-    getCustomersWithSpending().map((customer) => [customer.id, customer])
+  const due = useMemo(
+    () => dueCustomers(customers, purchases),
+    [customers, purchases]
   );
 
-  const records: FollowUpRecord[] = getFollowUps()
-    .slice()
-    .sort((a, b) => (a.followedAt < b.followedAt ? 1 : -1))
-    .map((item) => ({
-      ...item,
-      customerName: nameById.get(item.customerId)?.name ?? "未知客户",
-      customerStatus: nameById.get(item.customerId)?.status ?? "",
-    }));
+  const records = useMemo(() => {
+    const byId = new Map(customers.map((item) => [item.id, item]));
+    return followUps
+      .slice()
+      .sort((a, b) => (a.followedAt < b.followedAt ? 1 : -1))
+      .map<FollowUpRecord>((item) => ({
+        ...item,
+        customerName: byId.get(item.customerId)?.name ?? "已删除的客户",
+        customerStatus: byId.get(item.customerId)?.status ?? "",
+      }));
+  }, [customers, followUps]);
+
+  if (!ready) return <LoadingState />;
 
   return (
     <div>
@@ -26,7 +36,7 @@ export default function FollowUpsPage() {
         title="跟进任务"
         subtitle="把客户的每一次联系都记下来，下次该找谁系统会提醒你。"
       />
-      <FollowUpBoard dueCustomers={dueCustomers} records={records} />
+      <FollowUpBoard dueCustomers={due} records={records} />
     </div>
   );
 }

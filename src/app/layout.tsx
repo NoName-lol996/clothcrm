@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
+import { DataProvider } from "@/lib/store";
 
 export const metadata: Metadata = {
   title: "ClothCRM · 服装门店客户管理",
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
-        <AppShell>{children}</AppShell>
+        <DataProvider>
+          <AppShell>{children}</AppShell>
+        </DataProvider>
       </body>
     </html>
   );

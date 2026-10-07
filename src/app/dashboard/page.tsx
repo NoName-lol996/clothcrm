@@ -1,13 +1,21 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { getDashboardStats, getDueCustomers } from "@/lib/derived";
+import { dashboardStats, dueCustomers } from "@/lib/derived";
+import { useData } from "@/lib/store";
 import { describeFollowUp, formatMoney, formatNumber, formatTodayLong } from "@/lib/utils";
 import Avatar from "@/components/ui/Avatar";
 import StatusBadge from "@/components/ui/StatusBadge";
+import LoadingState from "@/components/ui/LoadingState";
 
 export default function DashboardPage() {
-  const stats = getDashboardStats();
-  const dueCustomers = getDueCustomers();
+  const { ready, customers, purchases } = useData();
+
+  if (!ready) return <LoadingState />;
+
+  const stats = dashboardStats(customers, purchases);
+  const due = dueCustomers(customers, purchases);
 
   const metrics = [
     { label: "客户总数", value: formatNumber(stats.totalCustomers), unit: "位", hint: "累计建档客户" },
@@ -16,7 +24,7 @@ export default function DashboardPage() {
     { label: "本月销售金额", value: formatMoney(stats.revenueThisMonth), unit: "", hint: "本月消费合计" },
   ];
 
-  const previewNames = dueCustomers.slice(0, 6);
+  const previewNames = due.slice(0, 6);
 
   return (
     <div>
@@ -58,19 +66,17 @@ export default function DashboardPage() {
             {previewNames.length > 0 ? (
               <div className="mt-6 flex items-center gap-3">
                 <div className="flex -space-x-2">
-                  {previewNames.map((customer) => (
+                  {previewNames.map((item) => (
                     <span
-                      key={customer.id}
+                      key={item.id}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-xs font-medium text-white ring-2 ring-[#1d1d1f]"
                     >
-                      {customer.name.slice(0, 1)}
+                      {item.name.slice(0, 1)}
                     </span>
                   ))}
                 </div>
-                {dueCustomers.length > previewNames.length ? (
-                  <span className="text-xs text-white/50">
-                    +{dueCustomers.length - previewNames.length}
-                  </span>
+                {due.length > previewNames.length ? (
+                  <span className="text-xs text-white/50">+{due.length - previewNames.length}</span>
                 ) : null}
               </div>
             ) : null}
@@ -88,34 +94,34 @@ export default function DashboardPage() {
         <div className="gc-card p-7 lg:col-span-2">
           <div className="mb-5 flex items-baseline justify-between">
             <h2 className="gc-title-md">今天要联系的客户</h2>
-            <span className="text-[13px] text-ink-3">共 {dueCustomers.length} 位</span>
+            <span className="text-[13px] text-ink-3">共 {due.length} 位</span>
           </div>
 
-          {dueCustomers.length === 0 ? (
+          {due.length === 0 ? (
             <p className="py-10 text-center text-sm text-ink-3">
               今天没有需要跟进的客户，可以放心休息一下。
             </p>
           ) : (
             <ul className="-mx-2">
-              {dueCustomers.slice(0, 5).map((customer) => (
-                <li key={customer.id}>
+              {due.slice(0, 5).map((item) => (
+                <li key={item.id}>
                   <Link
-                    href={"/customers/" + customer.id}
+                    href={"/customers/" + item.id}
                     className="flex items-center gap-4 rounded-2xl px-2 py-3 transition hover:bg-canvas-2"
                   >
-                    <Avatar name={customer.name} />
+                    <Avatar name={item.name} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="truncate text-[15px] font-medium">{customer.name}</span>
-                        <StatusBadge status={customer.status} />
+                        <span className="truncate text-[15px] font-medium">{item.name}</span>
+                        <StatusBadge status={item.status} />
                       </div>
                       <p className="mt-0.5 truncate text-xs text-ink-3">
-                        {customer.phone}
-                        {customer.tags.length > 0 ? " · " + customer.tags.join(" / ") : ""}
+                        {item.phone}
+                        {item.tags.length > 0 ? " · " + item.tags.join(" / ") : ""}
                       </p>
                     </div>
                     <span className="shrink-0 text-[13px] font-medium text-[#c4300c]">
-                      {describeFollowUp(customer.nextFollowUpAt)}
+                      {describeFollowUp(item.nextFollowUpAt)}
                     </span>
                   </Link>
                 </li>
@@ -123,12 +129,12 @@ export default function DashboardPage() {
             </ul>
           )}
 
-          {dueCustomers.length > 5 ? (
+          {due.length > 5 ? (
             <Link
               href="/follow-ups"
               className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
             >
-              查看全部 {dueCustomers.length} 位
+              查看全部 {due.length} 位
               <ArrowRight size={14} />
             </Link>
           ) : null}
