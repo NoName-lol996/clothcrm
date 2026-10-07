@@ -1,0 +1,222 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------
+   设计变量：这里集中定义整个项目的配色和字体。
+   想换风格，改这里就够了，不用一个个页面去调。
+   --------------------------------------------------------------- */
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial,
+    sans-serif;
+
+  --color-ink: #1d1d1f;
+  --color-ink-2: #6e6e73;
+  --color-ink-3: #86868b;
+  --color-hairline: #d2d2d7;
+  --color-canvas: #ffffff;
+  --color-canvas-2: #f5f5f7;
+  --color-accent: #0071e3;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: #f5f5f7;
+    color: #1d1d1f;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: #cfe4fb;
+  }
+}
+
+@layer components {
+  /* 顶部导航：模仿 Apple 官网那种半透明毛玻璃效果 */
+  .gc-nav {
+    background-color: rgba(255, 255, 255, 0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .gc-nav-link {
+    font-size: 13px;
+    line-height: 1;
+    color: rgba(29, 29, 31, 0.72);
+    transition: color 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .gc-nav-link:hover {
+    color: #1d1d1f;
+  }
+
+  .gc-nav-link[data-active="true"] {
+    color: #1d1d1f;
+    font-weight: 600;
+  }
+
+  .gc-brand {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #1d1d1f;
+  }
+
+  /* 卡片 */
+  .gc-card {
+    background-color: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 14px 34px -18px rgba(0, 0, 0, 0.22);
+  }
+
+  .gc-card-soft {
+    background-color: #ffffff;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  /* 文字层级 */
+  .gc-title-xl {
+    font-size: clamp(32px, 4.4vw, 44px);
+    line-height: 1.08;
+    font-weight: 700;
+    letter-spacing: -0.028em;
+  }
+
+  .gc-title-lg {
+    font-size: 26px;
+    line-height: 1.18;
+    font-weight: 600;
+    letter-spacing: -0.022em;
+  }
+
+  .gc-title-md {
+    font-size: 19px;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.016em;
+  }
+
+  .gc-eyebrow {
+    font-size: 13px;
+    font-weight: 500;
+    color: #86868b;
+  }
+
+  .gc-subtitle {
+    font-size: 17px;
+    line-height: 1.5;
+    color: #6e6e73;
+  }
+
+  .gc-metric {
+    font-size: clamp(30px, 3.4vw, 40px);
+    line-height: 1.05;
+    font-weight: 600;
+    letter-spacing: -0.032em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 按钮 */
+  .gc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 980px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    padding: 11px 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  }
+
+  .gc-btn-dark {
+    background-color: #1d1d1f;
+    color: #ffffff;
+  }
+
+  .gc-btn-dark:hover {
+    background-color: #333336;
+  }
+
+  .gc-btn-light {
+    background-color: #f5f5f7;
+    color: #1d1d1f;
+  }
+
+  .gc-btn-light:hover {
+    background-color: #e8e8ed;
+  }
+
+  .gc-btn-accent {
+    background-color: #0071e3;
+    color: #ffffff;
+  }
+
+  .gc-btn-accent:hover {
+    background-color: #0077ed;
+  }
+
+  /* 输入框 */
+  .gc-input {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid #d2d2d7;
+    background-color: #ffffff;
+    padding: 11px 14px;
+    font-size: 15px;
+    color: #1d1d1f;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .gc-input::placeholder {
+    color: #86868b;
+  }
+
+  .gc-input:focus {
+    outline: none;
+    border-color: #0071e3;
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.12);
+  }
+
+  /* 表格 */
+  .gc-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+  }
+
+  .gc-table th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: #86868b;
+    padding: 0 16px 12px;
+    white-space: nowrap;
+  }
+
+  .gc-table td {
+    padding: 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    vertical-align: middle;
+  }
+
+  .gc-table tbody tr {
+    transition: background-color 0.15s ease;
+  }
+
+  .gc-table tbody tr:hover {
+    background-color: #fafafa;
+  }
+}
