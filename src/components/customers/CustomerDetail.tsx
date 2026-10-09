@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MessageSquarePlus, Pencil, Receipt } from "lucide-react";
+import { ArrowLeft, MessageSquarePlus, Pencil, Receipt, Trash2 } from "lucide-react";
 import { followUpsOf, purchasesOf } from "@/lib/derived";
 import { useData } from "@/lib/store";
 import { describeFollowUp, formatFullDate, formatMoney, formatMonthDay } from "@/lib/utils";
@@ -13,14 +13,16 @@ import LoadingState from "@/components/ui/LoadingState";
 import CustomerFormDialog from "@/components/customers/CustomerFormDialog";
 import PurchaseFormDialog from "@/components/customers/PurchaseFormDialog";
 import FollowUpFormDialog from "@/components/follow-ups/FollowUpFormDialog";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function CustomerDetail({ id }: { id: string }) {
-  const { ready, customers, followUps, purchases } = useData();
+  const { ready, customers, followUps, purchases, trashCustomer } = useData();
   const router = useRouter();
 
   const [editOpen, setEditOpen] = useState(false);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (!ready) return <LoadingState />;
 
@@ -100,6 +102,14 @@ export default function CustomerDetail({ id }: { id: string }) {
             <button type="button" className="gc-btn gc-btn-light" onClick={() => setEditOpen(true)}>
               <Pencil size={14} />
               编辑资料
+            </button>
+            <button
+              type="button"
+              className="gc-btn gc-btn-light text-[#c4300c]"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 size={15} />
+              删除客户
             </button>
             <button
               type="button"
@@ -242,6 +252,25 @@ export default function CustomerDetail({ id }: { id: string }) {
         customerId={customer.id}
         customerName={customer.name}
       />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => {
+          trashCustomer(customer.id);
+          setDeleteOpen(false);
+          router.push("/customers");
+        }}
+        title="把这位客户放进回收站？"
+        description="放进回收站后，他不会再出现在列表和统计里。想找回来随时可以去回收站恢复。"
+        confirmLabel="放进回收站"
+        tone="danger"
+      >
+        <p className="text-[14px] leading-relaxed text-ink-2">
+          {customer.name} 名下还有 {records.length} 条跟进记录和 {history.length} 笔消费记录，
+          都会一起跟着进回收站。
+        </p>
+      </ConfirmDialog>
     </div>
   );
 }

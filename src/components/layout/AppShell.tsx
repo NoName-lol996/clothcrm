@@ -3,27 +3,27 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
-import CustomerFormDialog from "@/components/customers/CustomerFormDialog";
-import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useData } from "@/lib/store";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "数据概览" },
   { href: "/customers", label: "客户管理" },
   { href: "/follow-ups", label: "跟进管理" },
+  { href: "/trash", label: "回收站" },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { restoreDemoData } = useData();
+  const { restoreDemoData, trashedCustomers } = useData();
 
-  const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
+
+  const trashCount = trashedCustomers.length;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -38,24 +38,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="gc-nav-link"
+                className="gc-nav-link inline-flex items-center"
                 data-active={isActive(item.href)}
               >
                 {item.label}
+                {item.href === "/trash" && trashCount > 0 ? (
+                  <span className="ml-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#c4300c] px-1 text-[10px] font-semibold text-white">
+                    {trashCount}
+                  </span>
+                ) : null}
               </Link>
             ))}
           </nav>
-
-          <div className="ml-auto flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setNewCustomerOpen(true)}
-              className="gc-btn gc-btn-dark hidden md:inline-flex"
-            >
-              <Plus size={15} strokeWidth={2.4} />
-              新增客户
-            </button>
-          </div>
         </div>
 
         {/* 手机上把导航横过来，左右滑动即可 */}
@@ -64,19 +58,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              className="gc-nav-link"
+              className="gc-nav-link inline-flex items-center"
               data-active={isActive(item.href)}
             >
               {item.label}
+              {item.href === "/trash" && trashCount > 0 ? (
+                <span className="ml-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#c4300c] px-1 text-[10px] font-semibold text-white">
+                  {trashCount}
+                </span>
+              ) : null}
             </Link>
           ))}
-          <button
-            type="button"
-            onClick={() => setNewCustomerOpen(true)}
-            className="gc-nav-link shrink-0 font-medium text-accent"
-          >
-            + 新增客户
-          </button>
         </nav>
       </header>
 
@@ -100,42 +92,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
 
-      <CustomerFormDialog
-        open={newCustomerOpen}
-        onClose={() => setNewCustomerOpen(false)}
-        onSaved={(id) => router.push("/customers/" + id)}
-      />
-
-      <Modal
+      <ConfirmDialog
         open={resetOpen}
         onClose={() => setResetOpen(false)}
+        onConfirm={() => {
+          restoreDemoData();
+          setResetOpen(false);
+          router.push("/dashboard");
+        }}
         title="恢复成一开始的演示数据？"
         description="现在录入的所有客户、跟进和消费记录都会被替换掉，无法恢复。"
-        width={460}
-        footer={
-          <>
-            <button type="button" className="gc-btn gc-btn-light" onClick={() => setResetOpen(false)}>
-              取消
-            </button>
-            <button
-              type="button"
-              className="gc-btn"
-              style={{ backgroundColor: "#c4300c", color: "#fff" }}
-              onClick={() => {
-                restoreDemoData();
-                setResetOpen(false);
-                router.push("/dashboard");
-              }}
-            >
-              确认恢复
-            </button>
-          </>
-        }
+        confirmLabel="确认恢复"
+        tone="danger"
       >
         <p className="text-[14px] leading-relaxed text-ink-2">
           如果你只是想试试各种操作、又怕把演示数据弄乱，用这个按钮一键还原就好。
         </p>
-      </Modal>
+      </ConfirmDialog>
     </div>
   );
 }

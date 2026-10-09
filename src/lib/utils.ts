@@ -77,3 +77,16 @@ export function formatTodayLong(): string {
   const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
   return (now.getMonth() + 1) + "月" + now.getDate() + "日 " + weekdays[now.getDay()];
 }
+/** 现在的时间戳，用于记录"什么时候删的" */
+export function nowStamp(): string {
+  return new Date().toISOString();
+}
+
+/** 把时间戳显示成「10月7日 14:32」 */
+export function formatDateTime(stamp: string): string {
+  const date = new Date(stamp);
+  if (Number.isNaN(date.getTime())) return stamp;
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return date.getMonth() + 1 + "月" + date.getDate() + "日 " + hh + ":" + mm;
+}

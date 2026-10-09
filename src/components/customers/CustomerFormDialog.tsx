@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Field from "@/components/ui/Field";
 import { CUSTOMER_SOURCES, CUSTOMER_STATUSES, GENDERS, PRESET_TAGS } from "@/lib/constants";
 import { useData } from "@/lib/store";
@@ -21,7 +22,7 @@ export default function CustomerFormDialog({
   onSaved?: (id: string) => void;
   onDeleted?: () => void;
 }) {
-  const { addCustomer, updateCustomer, removeCustomer, followUps, purchases } = useData();
+  const { addCustomer, updateCustomer, trashCustomer, followUps, purchases } = useData();
 
   const isEdit = Boolean(customer);
 
@@ -286,45 +287,29 @@ export default function CustomerFormDialog({
         </div>
       </Modal>
 
-      <Modal
+      <ConfirmDialog
         open={open && confirmingDelete}
         onClose={() => setConfirmingDelete(false)}
-        title="确定删除这位客户吗？"
-        description="删除之后无法恢复。"
-        width={460}
-        footer={
-          <>
-            <button
-              type="button"
-              className="gc-btn gc-btn-light"
-              onClick={() => setConfirmingDelete(false)}
-            >
-              再想想
-            </button>
-            <button
-              type="button"
-              className="gc-btn"
-              style={{ backgroundColor: "#c4300c", color: "#fff" }}
-              onClick={() => {
-                if (customer) removeCustomer(customer.id);
-                onDeleted?.();
-                setConfirmingDelete(false);
-                onClose();
-              }}
-            >
-              确认删除
-            </button>
-          </>
-        }
+        onConfirm={() => {
+          if (customer) trashCustomer(customer.id);
+          setConfirmingDelete(false);
+          onDeleted?.();
+          onClose();
+        }}
+        title="把这位客户放进回收站？"
+        description="放进回收站后，他不会再出现在列表和统计里，随时可以恢复。"
+        confirmLabel="放进回收站"
+        tone="danger"
       >
         <p className="text-[14px] leading-relaxed text-ink-2">
-          {customer ? customer.name : ""} 的资料会被删除，
+          {customer ? customer.name : ""} 名下还有
           <span className="font-medium text-ink">
-            同时删除 {relatedFollowUps} 条跟进记录和 {relatedPurchases} 笔消费记录
+            {" "}
+            {relatedFollowUps} 条跟进记录和 {relatedPurchases} 笔消费记录
           </span>
-          。这个操作无法撤销。
+          ，都会一起跟着进回收站。
         </p>
-      </Modal>
+      </ConfirmDialog>
     </>
   );
 }

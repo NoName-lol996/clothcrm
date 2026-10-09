@@ -21,7 +21,7 @@ function daysLater(n: number): string {
 /** 今天 */
 const TODAY_KEY = daysAgo(0);
 
-export const CUSTOMERS: Customer[] = [
+const RAW_CUSTOMERS: Omit<Customer, "deletedAt">[] = [
   {
     id: "c001",
     name: "林小雅",
@@ -191,6 +191,11 @@ export const CUSTOMERS: Customer[] = [
     createdAt: daysAgo(97),
   },
 ];
+
+export const CUSTOMERS: Customer[] = RAW_CUSTOMERS.map((item) => ({
+  ...item,
+  deletedAt: null,
+}));
 
 export const FOLLOW_UPS: FollowUp[] = [
   {

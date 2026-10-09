@@ -26,6 +26,8 @@ export interface Customer {
   note: string;
   /** 建档时间 */
   createdAt: string;
+  /** 放进回收站的时间。null 表示这位客户是正常的，没有删除 */
+  deletedAt: string | null;
 }
 
 /** 一次跟进记录 */

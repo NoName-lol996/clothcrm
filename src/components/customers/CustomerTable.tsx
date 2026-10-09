@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, Search, Trash2 } from "lucide-react";
 import type { CustomerWithSpending } from "@/lib/derived";
 import { CUSTOMER_SOURCES, CUSTOMER_STATUSES } from "@/lib/constants";
+import { useData } from "@/lib/store";
 import { describeFollowUp, formatMoney, formatMonthDay } from "@/lib/utils";
 import Avatar from "@/components/ui/Avatar";
 import StatusBadge from "@/components/ui/StatusBadge";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const ALL = "全部";
 
@@ -16,9 +18,12 @@ export default function CustomerTable({
 }: {
   customers: CustomerWithSpending[];
 }) {
+  const { trashCustomer } = useData();
+
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>(ALL);
   const [source, setSource] = useState<string>(ALL);
+  const [pendingTrash, setPendingTrash] = useState<CustomerWithSpending | null>(null);
 
   const filtered = useMemo(() => {
     const key = keyword.trim();
@@ -48,7 +53,7 @@ export default function CustomerTable({
           </div>
 
           <select
-            className="gc-input sm:w-[170px]"
+            className="gc-input gc-select sm:w-[170px]"
             value={source}
             onChange={(event) => setSource(event.target.value)}
           >
@@ -88,7 +93,7 @@ export default function CustomerTable({
         </div>
 
         <div className="overflow-x-auto px-3 pb-4">
-          <table className="gc-table min-w-[860px]">
+          <table className="gc-table min-w-[880px]">
             <thead>
               <tr>
                 <th>客户</th>
@@ -143,13 +148,24 @@ export default function CustomerTable({
                     </td>
                     <td className="text-ink-2">{describeFollowUp(customer.nextFollowUpAt)}</td>
                     <td className="text-right">
-                      <Link
-                        href={"/customers/" + customer.id}
-                        className="inline-flex text-ink-3 transition hover:text-ink"
-                        aria-label="查看客户详情"
-                      >
-                        <ChevronRight size={17} />
-                      </Link>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          aria-label="删除客户"
+                          title="删除（会移入回收站）"
+                          onClick={() => setPendingTrash(customer)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-3 transition hover:bg-[#fdeceb] hover:text-[#c4300c]"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                        <Link
+                          href={"/customers/" + customer.id}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-3 transition hover:text-ink"
+                          aria-label="查看客户详情"
+                        >
+                          <ChevronRight size={17} />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -158,6 +174,28 @@ export default function CustomerTable({
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={pendingTrash !== null}
+        onClose={() => setPendingTrash(null)}
+        onConfirm={() => {
+          if (pendingTrash) trashCustomer(pendingTrash.id);
+          setPendingTrash(null);
+        }}
+        title="把这位客户放进回收站？"
+        description="放进回收站后，他不会再出现在列表和统计里。想找回来随时可以去回收站恢复。"
+        confirmLabel="放进回收站"
+        tone="danger"
+      >
+        <p className="text-[14px] leading-relaxed text-ink-2">
+          {pendingTrash?.name} 名下还有
+          <span className="font-medium text-ink">
+            {" "}
+            {pendingTrash?.spending.purchaseCount ?? 0} 笔消费记录
+          </span>
+          ，都会一起跟着进回收站。
+        </p>
+      </ConfirmDialog>
     </div>
   );
 }
