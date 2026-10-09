@@ -90,7 +90,7 @@ interface StoreValue {
   /** 清空回收站 */
   emptyTrash: () => void;
   addFollowUp: (input: FollowUpInput) => void;
-  addPurchase: (input: PurchaseInput) => void;
+  addPurchases: (inputs: PurchaseInput[]) => void;
   /** 批量导入客户 */
   importCustomers: (rows: ImportRow[], mode: "skip" | "update") => { imported: number; skipped: number };
   restoreDemoData: () => void;
@@ -292,15 +292,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
-  const addPurchase = useCallback((input: PurchaseInput) => {
-    const record: Purchase = { id: makeId("p"), ...input };
+  /** 一次可以存多笔消费：同一位客户一次买了好几件，可以分开记账 */
+  const addPurchases = useCallback((inputs: PurchaseInput[]) => {
+    if (inputs.length === 0) return;
+
+    const records: Purchase[] = inputs.map((input) => ({ id: makeId("p"), ...input }));
+    const owners = new Set(inputs.map((input) => input.customerId));
 
     setRaw((prev) => ({
       ...prev,
-      purchases: [record, ...prev.purchases],
+      purchases: [...records, ...prev.purchases],
       // 有消费就说明已经成交了
       customers: prev.customers.map((item) =>
-        item.id === input.customerId ? { ...item, status: "已成交" } : item
+        owners.has(item.id) ? { ...item, status: "已成交" } : item
       ),
     }));
   }, []);
@@ -385,7 +389,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     destroyCustomer,
     emptyTrash,
     addFollowUp,
-    addPurchase,
+    addPurchases,
     importCustomers,
     restoreDemoData,
   };

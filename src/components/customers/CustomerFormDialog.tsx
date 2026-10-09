@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -9,62 +9,36 @@ import { CUSTOMER_SOURCES, CUSTOMER_STATUSES, GENDERS, PRESET_TAGS } from "@/lib
 import { useData } from "@/lib/store";
 import type { Customer, CustomerStatus, Gender } from "@/lib/types";
 
-export default function CustomerFormDialog({
-  open,
-  onClose,
-  customer,
-  onSaved,
-  onDeleted,
-}: {
+interface Props {
   open: boolean;
   onClose: () => void;
   customer?: Customer | null;
   onSaved?: (id: string) => void;
   onDeleted?: () => void;
-}) {
+}
+
+/** 外面这一层只负责"关着的时候不渲染"，保证每次打开都是干净的表单 */
+export default function CustomerFormDialog(props: Props) {
+  if (!props.open) return null;
+  return <CustomerForm {...props} />;
+}
+
+function CustomerForm({ onClose, customer, onSaved, onDeleted }: Props) {
   const { addCustomer, updateCustomer, trashCustomer, followUps, purchases } = useData();
 
   const isEdit = Boolean(customer);
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [gender, setGender] = useState<Gender>("女");
-  const [source, setSource] = useState<string>(CUSTOMER_SOURCES[0]);
-  const [tags, setTags] = useState<string[]>([]);
-  const [status, setStatus] = useState<CustomerStatus>("新客户");
-  const [nextFollowUpAt, setNextFollowUpAt] = useState("");
-  const [note, setNote] = useState("");
+  const [name, setName] = useState(customer?.name ?? "");
+  const [phone, setPhone] = useState(customer?.phone ?? "");
+  const [gender, setGender] = useState<Gender>(customer?.gender ?? "女");
+  const [source, setSource] = useState<string>(customer?.source ?? CUSTOMER_SOURCES[0]);
+  const [tags, setTags] = useState<string[]>(customer ? [...customer.tags] : []);
+  const [status, setStatus] = useState<CustomerStatus>(customer?.status ?? "新客户");
+  const [nextFollowUpAt, setNextFollowUpAt] = useState(customer?.nextFollowUpAt ?? "");
+  const [note, setNote] = useState(customer?.note ?? "");
   const [customTag, setCustomTag] = useState("");
   const [error, setError] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  // 每次打开弹窗，把表单恢复成当前客户的内容（新增时就是空白）
-  useEffect(() => {
-    if (!open) return;
-    setError("");
-    setCustomTag("");
-    setConfirmingDelete(false);
-
-    if (customer) {
-      setName(customer.name);
-      setPhone(customer.phone);
-      setGender(customer.gender);
-      setSource(customer.source);
-      setTags([...customer.tags]);
-      setStatus(customer.status);
-      setNextFollowUpAt(customer.nextFollowUpAt ?? "");
-      setNote(customer.note);
-    } else {
-      setName("");
-      setPhone("");
-      setGender("女");
-      setSource(CUSTOMER_SOURCES[0]);
-      setTags([]);
-      setStatus("新客户");
-      setNextFollowUpAt("");
-      setNote("");
-    }
-  }, [open, customer]);
 
   const tagOptions = useMemo(() => {
     const all = [...PRESET_TAGS, ...tags];
@@ -133,7 +107,7 @@ export default function CustomerFormDialog({
   return (
     <>
       <Modal
-        open={open && !confirmingDelete}
+        open
         onClose={onClose}
         title={isEdit ? "编辑客户资料" : "新增客户"}
         description={isEdit ? undefined : "只填姓名和手机号也能先建档，其他信息以后再补。"}
@@ -280,15 +254,13 @@ export default function CustomerFormDialog({
           </Field>
 
           {error ? (
-            <p className="rounded-xl bg-[#fdeceb] px-4 py-3 text-[13px] text-[#c4300c]">
-              {error}
-            </p>
+            <p className="rounded-xl bg-[#fdeceb] px-4 py-3 text-[13px] text-[#c4300c]">{error}</p>
           ) : null}
         </div>
       </Modal>
 
       <ConfirmDialog
-        open={open && confirmingDelete}
+        open={confirmingDelete}
         onClose={() => setConfirmingDelete(false)}
         onConfirm={() => {
           if (customer) trashCustomer(customer.id);

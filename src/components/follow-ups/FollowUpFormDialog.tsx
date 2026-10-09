@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Modal from "@/components/ui/Modal";
 import Field from "@/components/ui/Field";
 import { FOLLOW_UP_RESULTS } from "@/lib/constants";
@@ -22,17 +22,19 @@ const QUICK_OPTIONS = [
   { label: "1 个月后", days: 30 },
 ];
 
-export default function FollowUpFormDialog({
-  open,
-  onClose,
-  customerId,
-  customerName,
-}: {
+interface Props {
   open: boolean;
   onClose: () => void;
   customerId: string;
   customerName: string;
-}) {
+}
+
+export default function FollowUpFormDialog(props: Props) {
+  if (!props.open) return null;
+  return <FollowUpForm {...props} />;
+}
+
+function FollowUpForm({ onClose, customerId, customerName }: Props) {
   const { addFollowUp } = useData();
 
   const [followedAt, setFollowedAt] = useState(todayKey());
@@ -40,15 +42,6 @@ export default function FollowUpFormDialog({
   const [result, setResult] = useState("");
   const [nextFollowUpAt, setNextFollowUpAt] = useState("");
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    setFollowedAt(todayKey());
-    setContent("");
-    setResult("");
-    setNextFollowUpAt("");
-    setError("");
-  }, [open]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -74,7 +67,7 @@ export default function FollowUpFormDialog({
 
   return (
     <Modal
-      open={open}
+      open
       onClose={onClose}
       title="记录一次跟进"
       description={"客户：" + customerName}

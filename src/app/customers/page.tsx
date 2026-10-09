@@ -33,7 +33,7 @@ export default function CustomersPage() {
               onClick={() => setImportOpen(true)}
             >
               <Upload size={15} />
-              导入客户
+              导入信息
             </button>
             <button type="button" className="gc-btn gc-btn-dark" onClick={() => setNewOpen(true)}>
               <Plus size={15} strokeWidth={2.4} />

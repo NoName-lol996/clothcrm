@@ -117,7 +117,7 @@ export default function CustomerDetail({ id }: { id: string }) {
               onClick={() => setPurchaseOpen(true)}
             >
               <Receipt size={15} />
-              记一笔消费
+              记消费
             </button>
             <button
               type="button"

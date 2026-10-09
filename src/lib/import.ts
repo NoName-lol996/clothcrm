@@ -1,8 +1,8 @@
-// 从 Excel / CSV 文件里读出客户资料。
-// 这里只负责"把文件变成数据"，界面部分在 ImportDialog 里。
+// 从 Excel / CSV 文件里读出资料。
+// 目前支持两类：客户资料、消费记录。以后要加新类型，照着下面加一组字段就行。
 
 import { CUSTOMER_SOURCES, CUSTOMER_STATUSES } from "./constants";
-import type { CustomerStatus, Gender } from "./types";
+import type { Customer, CustomerStatus, Gender, Purchase } from "./types";
 import { toDateKey } from "./utils";
 
 export type CellValue = string | number | Date | boolean | null;
@@ -20,7 +20,6 @@ export interface ParsedSheet {
 function decodeText(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
 
-  // 带 BOM 的 UTF-8
   if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
     return new TextDecoder("utf-8").decode(bytes.subarray(3));
   }
@@ -98,9 +97,7 @@ function parseDelimited(text: string): ParsedSheet {
 
 /** 去掉空行，第一行当表头 */
 function buildSheet(raw: CellValue[][]): ParsedSheet {
-  const cleaned = raw.filter(
-    (row) => row.some((cell) => String(cell ?? "").trim() !== "")
-  );
+  const cleaned = raw.filter((row) => row.some((cell) => String(cell ?? "").trim() !== ""));
 
   if (cleaned.length === 0) return { headers: [], rows: [] };
 
@@ -135,10 +132,18 @@ export async function parseFile(file: File): Promise<ParsedSheet> {
 }
 
 /* ------------------------------------------------------------------
-   2. 列对应关系
+   2. 两个导入类型各自需要哪些列
    ------------------------------------------------------------------ */
 
-export type ImportFieldKey =
+export interface ImportField<K extends string> {
+  key: K;
+  label: string;
+  required?: boolean;
+  hint?: string;
+  aliases: string[];
+}
+
+export type CustomerFieldKey =
   | "name"
   | "phone"
   | "gender"
@@ -150,15 +155,15 @@ export type ImportFieldKey =
   | "totalSpent"
   | "lastPurchaseAt";
 
-export interface ImportField {
-  key: ImportFieldKey;
-  label: string;
-  required?: boolean;
-  hint?: string;
-  aliases: string[];
-}
+export type PurchaseFieldKey =
+  | "customerPhone"
+  | "customerName"
+  | "purchasedAt"
+  | "amount"
+  | "note";
 
-export const IMPORT_FIELDS: ImportField[] = [
+/** 导入客户资料时，系统需要的列 */
+export const CUSTOMER_FIELDS: ImportField<CustomerFieldKey>[] = [
   {
     key: "name",
     label: "姓名",
@@ -186,16 +191,7 @@ export const IMPORT_FIELDS: ImportField[] = [
     key: "totalSpent",
     label: "累计消费金额",
     hint: "填了会自动生成一笔消费记录",
-    aliases: [
-      "累计消费金额",
-      "累计消费",
-      "累计金额",
-      "消费金额",
-      "消费总额",
-      "总消费",
-      "消费合计",
-      "amount",
-    ],
+    aliases: ["累计消费金额", "累计消费", "累计金额", "消费金额", "消费总额", "总消费", "消费合计", "amount"],
   },
   {
     key: "lastPurchaseAt",
@@ -212,13 +208,81 @@ export const IMPORT_FIELDS: ImportField[] = [
   },
 ];
 
+/** 导入消费记录时，系统需要的列 */
+export const PURCHASE_FIELDS: ImportField<PurchaseFieldKey>[] = [
+  {
+    key: "customerPhone",
+    label: "客户手机号",
+    required: true,
+    hint: "靠它找到是哪位客户",
+    aliases: [
+      "客户手机号",
+      "手机号",
+      "手机号码",
+      "手机",
+      "联系电话",
+      "联系方式",
+      "电话",
+      "phone",
+      "tel",
+      "mobile",
+    ],
+  },
+  {
+    key: "customerName",
+    label: "客户姓名",
+    hint: "没有手机号时，靠姓名匹配",
+    aliases: ["客户姓名", "姓名", "客户名称", "名字", "客户", "name"],
+  },
+  {
+    key: "purchasedAt",
+    label: "消费日期",
+    required: true,
+    aliases: [
+      "消费日期",
+      "消费时间",
+      "购买日期",
+      "购买时间",
+      "订单日期",
+      "成交日期",
+      "下单时间",
+      "日期",
+      "date",
+    ],
+  },
+  {
+    key: "amount",
+    label: "消费金额",
+    required: true,
+    aliases: [
+      "消费金额",
+      "实付金额",
+      "成交金额",
+      "订单金额",
+      "应付金额",
+      "金额",
+      "价格",
+      "amount",
+      "total",
+    ],
+  },
+  {
+    key: "note",
+    label: "买了什么",
+    aliases: ["买了什么", "商品名称", "商品", "货品", "款式", "备注", "说明", "item", "note", "remark"],
+  },
+];
+
 /** 自动猜哪一列对应哪个字段 */
-export function autoMatch(headers: string[]): Partial<Record<ImportFieldKey, number>> {
+export function autoMatch<K extends string>(
+  headers: string[],
+  fields: ImportField<K>[]
+): Partial<Record<K, number>> {
   const normalized = headers.map((item) => item.replace(/\s/g, "").toLowerCase());
   const used = new Set<number>();
-  const result: Partial<Record<ImportFieldKey, number>> = {};
+  const result: Partial<Record<K, number>> = {};
 
-  for (const field of IMPORT_FIELDS) {
+  for (const field of fields) {
     for (let index = 0; index < normalized.length; index += 1) {
       if (used.has(index)) continue;
       const header = normalized[index];
@@ -285,13 +349,7 @@ export function parseDateCell(value: CellValue): string | null {
   if (!year || !month || !day) return null;
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
 
-  return (
-    String(year) +
-    "-" +
-    String(month).padStart(2, "0") +
-    "-" +
-    String(day).padStart(2, "0")
-  );
+  return String(year) + "-" + String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0");
 }
 
 /** 金额：¥1,280.5 这种也能认出来 */
@@ -334,11 +392,10 @@ function parseTagsCell(value: CellValue): string[] {
 }
 
 /* ------------------------------------------------------------------
-   4. 组装成待导入的行
+   4. 客户资料：组装成待导入的行
    ------------------------------------------------------------------ */
 
 export interface DraftRow {
-  /** 在原文件里的行号，从 2 开始（第 1 行是表头） */
   lineNumber: number;
   customer: {
     name: string;
@@ -352,18 +409,16 @@ export interface DraftRow {
   };
   totalSpent: number;
   lastPurchaseAt: string | null;
-  /** 有问题的地方，比如缺姓名 */
   problem: string | null;
-  /** 手机号在系统里已经存在 */
   duplicate: boolean;
 }
 
-export function buildDraftRows(
+export function buildCustomerDrafts(
   sheet: ParsedSheet,
-  mapping: Partial<Record<ImportFieldKey, number>>,
+  mapping: Partial<Record<CustomerFieldKey, number>>,
   existingPhones: Set<string>
 ): DraftRow[] {
-  const pick = (row: CellValue[], key: ImportFieldKey): CellValue => {
+  const pick = (row: CellValue[], key: CustomerFieldKey): CellValue => {
     const index = mapping[key];
     if (index === undefined || index === null || index < 0) return null;
     return row[index] ?? null;
@@ -392,7 +447,6 @@ export function buildDraftRows(
         gender: parseGenderCell(pick(row, "gender")),
         source,
         tags: parseTagsCell(pick(row, "tags")),
-        // 没写状态时：有消费就算已成交，否则是新客户
         status: declaredStatus ? parseStatusCell(declaredStatus) : totalSpent > 0 ? "已成交" : "新客户",
         nextFollowUpAt: parseDateCell(pick(row, "nextFollowUpAt")),
         note: cellText(pick(row, "note")),
@@ -406,7 +460,99 @@ export function buildDraftRows(
 }
 
 /* ------------------------------------------------------------------
-   5. 导入模板
+   5. 消费记录：组装成待导入的行
+   ------------------------------------------------------------------ */
+
+export interface PurchaseDraftRow {
+  lineNumber: number;
+  /** 匹配到的客户，没匹配上就是 null */
+  customerId: string | null;
+  customerLabel: string;
+  purchasedAt: string;
+  amount: number;
+  note: string;
+  problem: string | null;
+  /** 系统里已经有"同一位客户、同一天、同样金额"的记录 */
+  duplicate: boolean;
+}
+
+export function buildPurchaseDrafts(
+  sheet: ParsedSheet,
+  mapping: Partial<Record<PurchaseFieldKey, number>>,
+  customers: Customer[],
+  purchases: Purchase[]
+): PurchaseDraftRow[] {
+  const pick = (row: CellValue[], key: PurchaseFieldKey): CellValue => {
+    const index = mapping[key];
+    if (index === undefined || index === null || index < 0) return null;
+    return row[index] ?? null;
+  };
+
+  const byPhone = new Map<string, Customer[]>();
+  const byName = new Map<string, Customer[]>();
+  for (const customer of customers) {
+    byPhone.set(customer.phone, [...(byPhone.get(customer.phone) ?? []), customer]);
+    byName.set(customer.name, [...(byName.get(customer.name) ?? []), customer]);
+  }
+
+  return sheet.rows.map((row, position) => {
+    const rawPhone = cellText(pick(row, "customerPhone")).replace(/[^0-9]/g, "");
+    const rawName = cellText(pick(row, "customerName"));
+    const purchasedAt = parseDateCell(pick(row, "purchasedAt")) ?? "";
+    const amount = parseAmountCell(pick(row, "amount"));
+    const note = cellText(pick(row, "note"));
+
+    let matched: Customer | null = null;
+    let label = rawName || rawPhone;
+    let problem: string | null = null;
+
+    if (rawPhone) {
+      const hits = byPhone.get(rawPhone) ?? [];
+      if (hits.length === 0) problem = "系统里没有这个手机号的客户";
+      else {
+        matched = hits[0];
+        label = hits[0].name;
+      }
+    } else if (rawName) {
+      const hits = byName.get(rawName) ?? [];
+      if (hits.length === 0) problem = "系统里没有叫这个名字的客户";
+      else if (hits.length > 1) problem = "有 " + hits.length + " 位同名客户，请改用手机号";
+      else {
+        matched = hits[0];
+        label = hits[0].name;
+      }
+    } else {
+      problem = "缺少客户手机号";
+    }
+
+    if (!problem && !purchasedAt) problem = "缺少消费日期";
+    else if (!problem && amount <= 0) problem = "消费金额不对";
+
+    const duplicate =
+      !problem &&
+      matched !== null &&
+      purchases.some(
+        (item) =>
+          item.customerId === matched?.id &&
+          item.purchasedAt === purchasedAt &&
+          Math.abs(item.amount - amount) < 0.005
+      );
+
+    return {
+      lineNumber: position + 2,
+      customerId: matched ? matched.id : null,
+      customerLabel: label,
+      purchasedAt,
+      amount,
+      note,
+      problem,
+      duplicate,
+    };
+  });
+}
+
+/* ------------------------------------------------------------------
+   6. 导入模板
    ------------------------------------------------------------------ */
 
 function csvCell(text: string): string {
@@ -414,7 +560,7 @@ function csvCell(text: string): string {
   return text;
 }
 
-/** 生成一份可以下载的模板，用户照着填就行 */
+/** 客户资料的模板 */
 export function buildTemplateCsv(): string {
   const headers = [
     "姓名",
@@ -456,7 +602,18 @@ export function buildTemplateCsv(): string {
     ],
   ];
 
-  const lines = [headers, ...rows].map((row) => row.map(csvCell).join(","));
-  // 开头加 BOM，这样 Excel 打开不会乱码
-  return "\uFEFF" + lines.join("\r\n");
+  return "\uFEFF" + [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+}
+
+/** 消费记录的模板 */
+export function buildPurchaseTemplateCsv(): string {
+  const headers = ["客户手机号", "客户姓名", "消费日期", "消费金额", "买了什么"];
+
+  const rows = [
+    ["13800001111", "张小雨", "2026-09-20", "1280", "秋季风衣"],
+    ["13800001111", "张小雨", "2026-09-20", "420", "打底衫两件"],
+    ["13800002222", "李可", "2026-08-15", "860", "连衣裙"],
+  ];
+
+  return "\uFEFF" + [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
