@@ -17,3 +17,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# 本机工具（不进入代码仓库）
+/.tools

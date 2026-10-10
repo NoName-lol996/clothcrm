@@ -2,7 +2,18 @@
 chcp 65001 >nul
 title ClothCRM
 cd /d "%~dp0"
-set "PATH=C:\Users\30350\.cache\codex-tools\bin;%PATH%"
+
+where npm >nul 2>&1
+if errorlevel 1 set "PATH=%~dp0.tools;%PATH%"
+
+where npm >nul 2>&1
+if errorlevel 1 (
+  echo.
+  echo   没有找到 npm，请先安装 Node.js：https://nodejs.org
+  echo.
+  pause
+  exit /b
+)
 
 netstat -an | findstr /c:":3000 " | findstr /i "LISTENING" >nul 2>&1
 if %errorlevel%==0 (
