@@ -1,351 +1,340 @@
-// 第一阶段的示例数据。
-// 这些数据让界面先跑起来，等接入真实数据库后，这个文件就可以删掉了。
+// 演示用的初始数据。
+// 一位客户的资料是手写的，消费和跟进记录按规则生成（用固定随机种子，保证每次结果都一样）。
+//
+// 这份数据的目标：让首页的数字看起来像一家真在营业的门店，
+// 而不是一个刚建好的空壳。
 
-import type { Customer, FollowUp, Purchase } from "./types";
+import type { Customer, CustomerStatus, FollowUp, Gender, Purchase } from "./types";
+import { FOLLOW_UP_RESULTS } from "./constants";
 import { toDateKey } from "./utils";
 
 const TODAY = new Date();
 
 /** n 天前 */
 function daysAgo(n: number): string {
-  const d = new Date(TODAY);
-  d.setDate(d.getDate() - n);
-  return toDateKey(d);
+  const date = new Date(TODAY);
+  date.setDate(date.getDate() - n);
+  return toDateKey(date);
 }
 
-/** n 天后 */
-function daysLater(n: number): string {
-  return daysAgo(-n);
+/** 固定种子的随机数：保证服务端和浏览器生成的数据完全一致 */
+function makeRandom(seed: number) {
+  let state = seed;
+  return function next(): number {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
 }
 
-/** 今天 */
-const TODAY_KEY = daysAgo(0);
+const random = makeRandom(20261010);
 
-const RAW_CUSTOMERS: Omit<Customer, "deletedAt">[] = [
-  {
-    id: "c001",
-    name: "林小雅",
-    phone: "13800138001",
-    gender: "女",
-    source: "老客转介绍",
-    tags: ["高消费", "喜欢新款"],
-    status: "已成交",
-    nextFollowUpAt: daysAgo(2),
-    note: "偏爱简约通勤风，常穿 S / M 码，换季会来逛。",
-    createdAt: daysAgo(186),
-  },
-  {
-    id: "c002",
-    name: "周敏",
-    phone: "13900139002",
-    gender: "女",
-    source: "小红书",
-    tags: ["价格敏感"],
-    status: "跟进中",
-    nextFollowUpAt: daysAgo(1),
-    note: "看中一件羊毛大衣，觉得价格偏高，等折扣。",
-    createdAt: daysAgo(45),
-  },
-  {
-    id: "c003",
-    name: "张婉婷",
-    phone: "13700137003",
-    gender: "女",
-    source: "到店自然客流",
-    tags: ["宝妈"],
-    status: "已成交",
-    nextFollowUpAt: daysLater(5),
-    note: "带孩子来店里，需要方便活动的款式。",
-    createdAt: daysAgo(121),
-  },
-  {
-    id: "c004",
-    name: "李静",
-    phone: "13600136004",
-    gender: "女",
-    source: "微信",
-    tags: ["职场女性", "高消费"],
-    status: "跟进中",
-    nextFollowUpAt: TODAY_KEY,
-    note: "公司年中活动需要正式一点的套装，约了周末到店。",
-    createdAt: daysAgo(30),
-  },
-  {
-    id: "c005",
-    name: "王雪",
-    phone: "13500135005",
-    gender: "女",
-    source: "抖音",
-    tags: ["学生"],
-    status: "新客户",
-    nextFollowUpAt: daysLater(1),
-    note: "刷视频看到店里的新款，想来看看针织衫。",
-    createdAt: daysAgo(3),
-  },
-  {
-    id: "c006",
-    name: "陈思远",
-    phone: "13400134006",
-    gender: "男",
-    source: "老客转介绍",
-    tags: [],
-    status: "新客户",
-    nextFollowUpAt: daysLater(2),
-    note: "朋友介绍，需要一套参加婚礼的西装。",
-    createdAt: daysAgo(6),
-  },
-  {
-    id: "c007",
-    name: "黄伟强",
-    phone: "13300133007",
-    gender: "男",
-    source: "到店自然客流",
-    tags: ["回头客"],
-    status: "已成交",
-    nextFollowUpAt: null,
-    note: "公司团购过衬衫，平时自己也会来买。",
-    createdAt: daysAgo(203),
-  },
-  {
-    id: "c008",
-    name: "赵雨桐",
-    phone: "13200132008",
-    gender: "女",
-    source: "朋友圈",
-    tags: ["喜欢新款"],
-    status: "跟进中",
-    nextFollowUpAt: daysAgo(3),
-    note: "上周来看过羽绒服，说要和家里商量一下。",
-    createdAt: daysAgo(62),
-  },
-  {
-    id: "c009",
-    name: "刘俊杰",
-    phone: "13100131009",
-    gender: "男",
-    source: "其他",
-    tags: [],
-    status: "已流失",
-    nextFollowUpAt: null,
-    note: "只在开业时来过一次，后来一直没有回应。",
-    createdAt: daysAgo(152),
-  },
-  {
-    id: "c010",
-    name: "何美琪",
-    phone: "13000130010",
-    gender: "女",
-    source: "线下活动",
-    tags: ["职场女性"],
-    status: "已成交",
-    nextFollowUpAt: daysLater(9),
-    note: "在商场活动加上的微信，喜欢基础款百搭单品。",
-    createdAt: daysAgo(88),
-  },
-  {
-    id: "c011",
-    name: "吴倩",
-    phone: "18800188011",
-    gender: "女",
-    source: "微信",
-    tags: ["价格敏感"],
-    status: "跟进中",
-    nextFollowUpAt: daysAgo(5),
-    note: "等季末清仓，想一次买三件。",
-    createdAt: daysAgo(75),
-  },
-  {
-    id: "c012",
-    name: "郑好",
-    phone: "18700187012",
-    gender: "女",
-    source: "小红书",
-    tags: ["喜欢新款", "回头客"],
-    status: "已成交",
-    nextFollowUpAt: daysLater(12),
-    note: "每次上新都会来看，喜欢有设计感的款式。",
-    createdAt: daysAgo(140),
-  },
-  {
-    id: "c013",
-    name: "谢婉",
-    phone: "18600186013",
-    gender: "女",
-    source: "到店自然客流",
-    tags: [],
-    status: "新客户",
-    nextFollowUpAt: daysLater(3),
-    note: "昨天第一次进店，试了两件但没买。",
-    createdAt: daysAgo(1),
-  },
-  {
-    id: "c014",
-    name: "孙琳",
-    phone: "18500185014",
-    gender: "女",
-    source: "老客转介绍",
-    tags: ["高消费"],
-    status: "已成交",
-    nextFollowUpAt: daysLater(20),
-    note: "消费能力强，偏爱面料好的单品。",
-    createdAt: daysAgo(97),
-  },
+function pick(list: readonly string[]): string {
+  return list[Math.floor(random() * list.length)];
+}
+
+/* ------------------------------------------------------------------
+   客户名册
+   每一行的意思：
+   [姓名, 手机号, 性别, 来源, 标签, 状态, 下次跟进(相对今天的天数，null 表示不安排), 备注, 建档于几天前]
+   ------------------------------------------------------------------ */
+
+type Row = [
+  string,
+  string,
+  Gender,
+  string,
+  string,
+  CustomerStatus,
+  number | null,
+  string,
+  number,
 ];
 
-export const CUSTOMERS: Customer[] = RAW_CUSTOMERS.map((item) => ({
-  ...item,
-  deletedAt: null,
-}));
+const ROSTER: Row[] = [
+  ["林小雅", "13800138001", "女", "老客转介绍", "高消费/喜欢新款", "已成交", -2, "偏爱简约通勤风，常穿 S / M 码，换季会来逛", 186],
+  ["周敏", "13900139002", "女", "小红书", "价格敏感", "跟进中", -1, "看中一件羊毛大衣，觉得价格偏高，在等折扣", 45],
+  ["张婉婷", "13700137003", "女", "到店自然客流", "宝妈", "已成交", 5, "带孩子来店里，偏好方便活动的款式", 121],
+  ["李静", "13600136004", "女", "微信", "职场女性/高消费", "跟进中", 0, "公司活动需要正式套装，约了周末到店", 30],
+  ["王雪", "13500135005", "女", "抖音", "学生", "新客户", 1, "刷视频看到新款，想来看针织衫", 3],
+  ["陈思远", "13400134006", "男", "老客转介绍", "", "新客户", 2, "朋友介绍，需要一套参加婚礼的西装", 6],
+  ["黄伟强", "13300133007", "男", "到店自然客流", "回头客", "已成交", null, "公司团购过衬衫，平时自己也会来买", 203],
+  ["赵雨桐", "13200132008", "女", "朋友圈", "喜欢新款", "跟进中", -3, "上周看过羽绒服，说要和家里商量", 62],
+  ["刘俊杰", "13100131009", "男", "其他", "", "已流失", null, "只在开业时来过一次，后来一直没有回应", 152],
+  ["何美琪", "13000130010", "女", "线下活动", "职场女性", "已成交", 9, "商场活动加的微信，喜欢基础款百搭单品", 88],
+  ["吴倩", "18800188011", "女", "微信", "价格敏感", "跟进中", -5, "等季末清仓，想一次买三件", 75],
+  ["郑好", "18700187012", "女", "小红书", "喜欢新款/回头客", "已成交", 12, "每次上新都会来看，喜欢有设计感的款式", 140],
+  ["谢婉", "18600186013", "女", "到店自然客流", "", "新客户", 3, "第一次进店试了两件，还没买", 1],
+  ["孙琳", "18500185014", "女", "老客转介绍", "高消费", "已成交", 20, "消费能力强，偏爱面料好的单品", 97],
 
-export const FOLLOW_UPS: FollowUp[] = [
-  {
-    id: "f001",
-    customerId: "c001",
-    followedAt: daysAgo(2),
-    content: "电话回访，告知秋季新款到店。",
-    result: "已邀约到店",
-    nextFollowUpAt: daysAgo(2),
-  },
-  {
-    id: "f002",
-    customerId: "c001",
-    followedAt: daysAgo(33),
-    content: "发微信推荐会员日活动，客户表示会来看看。",
-    result: "有兴趣，待考虑",
-    nextFollowUpAt: null,
-  },
-  {
-    id: "f003",
-    customerId: "c002",
-    followedAt: daysAgo(1),
-    content: "微信发送了大衣的实拍图和面料说明。",
-    result: "有兴趣，待考虑",
-    nextFollowUpAt: daysAgo(1),
-  },
-  {
-    id: "f004",
-    customerId: "c002",
-    followedAt: daysAgo(12),
-    content: "客户到店试穿，觉得版型不错但价格偏高。",
-    result: "暂时不需要",
-    nextFollowUpAt: null,
-  },
-  {
-    id: "f005",
-    customerId: "c003",
-    followedAt: daysAgo(5),
-    content: "到店购买后回访，询问穿着体验。",
-    result: "已成交",
-    nextFollowUpAt: daysLater(5),
-  },
-  {
-    id: "f006",
-    customerId: "c004",
-    followedAt: daysAgo(4),
-    content: "微信沟通活动穿着的需求，推荐了三套搭配。",
-    result: "已邀约到店",
-    nextFollowUpAt: TODAY_KEY,
-  },
-  {
-    id: "f007",
-    customerId: "c005",
-    followedAt: daysAgo(2),
-    content: "加了微信，发了针织衫的上新图。",
-    result: "已加微信",
-    nextFollowUpAt: daysLater(1),
-  },
-  {
-    id: "f008",
-    customerId: "c006",
-    followedAt: daysAgo(3),
-    content: "电话沟通婚礼时间，确认了预算范围。",
-    result: "有兴趣，待考虑",
-    nextFollowUpAt: daysLater(2),
-  },
-  {
-    id: "f009",
-    customerId: "c007",
-    followedAt: daysAgo(40),
-    content: "购后回访，客户对衬衫版型很满意。",
-    result: "已成交",
-    nextFollowUpAt: null,
-  },
-  {
-    id: "f010",
-    customerId: "c008",
-    followedAt: daysAgo(3),
-    content: "微信问羽绒服的事，客户说还在考虑。",
-    result: "有兴趣，待考虑",
-    nextFollowUpAt: daysAgo(3),
-  },
-  {
-    id: "f011",
-    customerId: "c008",
-    followedAt: daysAgo(15),
-    content: "到店试穿羽绒服两件。",
-    result: "有兴趣，待考虑",
-    nextFollowUpAt: null,
-  },
-  {
-    id: "f012",
-    customerId: "c009",
-    followedAt: daysAgo(148),
-    content: "添加微信后一直没有通过。",
-    result: "联系不上",
-    nextFollowUpAt: null,
-  },
-  {
-    id: "f013",
-    customerId: "c010",
-    followedAt: daysAgo(8),
-    content: "活动后回访，推荐了当季基础款。",
-    result: "已成交",
-    nextFollowUpAt: daysLater(9),
-  },
-  {
-    id: "f014",
-    customerId: "c011",
-    followedAt: daysAgo(5),
-    content: "客户问季末折扣时间，说明会等清仓。",
-    result: "有兴趣，待考虑",
-    nextFollowUpAt: daysAgo(5),
-  },
-  {
-    id: "f015",
-    customerId: "c012",
-    followedAt: daysAgo(2),
-    content: "上新通知，客户当天到店并购买。",
-    result: "已成交",
-    nextFollowUpAt: daysLater(12),
-  },
-  {
-    id: "f016",
-    customerId: "c013",
-    followedAt: daysAgo(0),
-    content: "第一次进店，留了手机号，加了微信。",
-    result: "已加微信",
-    nextFollowUpAt: daysLater(3),
-  },
-  {
-    id: "f017",
-    customerId: "c014",
-    followedAt: daysAgo(19),
-    content: "推荐了新款羊绒单品，客户很感兴趣。",
-    result: "有兴趣，待考虑",
-    nextFollowUpAt: daysLater(20),
-  },
+  ["苏念", "15000150015", "女", "小红书", "职场女性", "已成交", -1, "在写字楼上班，喜欢利落的西装和衬衫", 210],
+  ["顾雅雯", "15800158016", "女", "到店自然客流", "宝妈", "跟进中", 0, "想找显瘦的连衣裙，接送孩子时穿", 51],
+  ["沈可欣", "18200182017", "女", "抖音", "喜欢新款", "已成交", 6, "刷直播进来的，偏爱亮色系", 133],
+  ["冯静怡", "18300183018", "女", "微信", "", "跟进中", -4, "问过好几次价格，一直没下定决心", 68],
+  ["邓佳", "17600176019", "女", "老客转介绍", "高消费/回头客", "已成交", 15, "老客户介绍来的，一次买得多", 168],
+  ["许若彤", "17700177020", "女", "到店自然客流", "学生", "新客户", 4, "大学生，预算有限，看中基础款", 2],
+  ["罗雨薇", "15500155021", "女", "小红书", "喜欢新款", "已成交", 8, "喜欢新中式，对版型要求高", 145],
+  ["高梦洁", "15600156022", "女", "朋友圈", "职场女性", "跟进中", -2, "需要一套出差的通勤装", 39],
+  ["谭思琪", "17800178023", "女", "到店自然客流", "", "已成交", null, "买过一次针织衫，穿着很满意", 174],
+  ["卢珊", "18000180024", "女", "微信", "价格敏感/回头客", "已成交", 11, "只在有活动的时候来，比较在意性价比", 190],
+  ["蒋薇", "18100181025", "女", "抖音", "宝妈", "跟进中", -6, "孩子上学后想做点改变，问过搭配建议", 57],
+  ["崔晓月", "15200152026", "女", "老客转介绍", "高消费", "已成交", 18, "朋友介绍，喜欢成套买", 158],
+  ["范雨欣", "15100151027", "女", "到店自然客流", "学生", "新客户", 2, "路过进店，加了微信说下次带同学来", 4],
+  ["叶琳", "17300173028", "女", "小红书", "职场女性", "已成交", 7, "喜欢极简风，常买黑白灰", 119],
+  ["钟楚楚", "17400174029", "女", "微信", "", "已流失", null, "加了好友，几次推送都没有回应", 143],
+  ["唐韵", "18900189030", "女", "线下活动", "喜欢新款", "已成交", 13, "品牌活动认识的，喜欢有人帮她挑", 101],
+  ["马晓琳", "13000130031", "女", "到店自然客流", "宝妈/回头客", "已成交", 4, "固定每季来一次，一次买两三件", 220],
+  ["潘敏仪", "13100131032", "女", "朋友圈", "价格敏感", "跟进中", -1, "在等一件大衣降价", 48],
+  ["汪静", "13200132033", "女", "小红书", "职场女性", "已成交", 16, "喜欢真丝和垂感好的面料", 128],
+  ["石雨蒙", "13300133034", "女", "抖音", "学生", "跟进中", 1, "看了直播来的，还在犹豫颜色", 22],
+  ["秦悦", "13400134035", "女", "老客转介绍", "高消费/喜欢新款", "已成交", 9, "朋友介绍，出手爽快", 175],
+  ["江语晨", "13500135036", "女", "到店自然客流", "", "已成交", null, "住在附近，散步时会进来看看", 240],
+  ["侯佳音", "13600136037", "女", "微信", "宝妈", "跟进中", -2, "想找一件能遮手臂的上衣", 35],
+  ["龚雪", "13700137038", "女", "小红书", "喜欢新款", "已成交", 21, "对颜色很敏感，喜欢低饱和度的" , 112],
+  ["廖婉如", "13800138039", "女", "线下活动", "职场女性/高消费", "已成交", 5, "活动现场认识，买过两套西装", 96],
+  ["邹雨", "13900139040", "女", "到店自然客流", "学生", "已流失", null, "来过一次，说预算不够，之后再没联系", 131],
+  ["万清", "15000150041", "女", "抖音", "", "跟进中", 0, "直播间问过尺码，加了微信", 27],
+  ["段丽", "15100151042", "女", "朋友圈", "价格敏感", "跟进中", -3, "每次都是等活动，属于典型的等折扣型", 84],
+  ["洪欣然", "15200152043", "女", "老客转介绍", "回头客", "已成交", 14, "介绍过两位朋友来，自己也会回购", 152],
+  ["雷蕾", "15300153044", "女", "到店自然客流", "喜欢新款", "已成交", 6, "喜欢试穿，看中了就买", 165],
+  ["钱多多", "15400154045", "女", "小红书", "高消费", "已成交", 19, "只看高品质单品，不太看价格", 88],
+  ["温晴", "15500155046", "女", "微信", "职场女性", "跟进中", 3, "教师，喜欢端庄一点的款式", 42],
+  ["白露", "15600156047", "女", "到店自然客流", "", "新客户", 1, "第一次进店，留了手机号", 2],
+  ["邱静文", "15700157048", "女", "朋友圈", "宝妈", "已成交", 10, "常给孩子和自己一起买", 178],
+  ["郝雅", "15800158049", "女", "抖音", "喜欢新款/回头客", "已成交", 12, "视频来的，后来成了常客", 134],
+  ["严诗雨", "15900159050", "女", "小红书", "价格敏感", "跟进中", -5, "问过三次价格，还在等", 66],
+  ["施敏", "18000180051", "女", "老客转介绍", "职场女性", "已成交", 8, "做行政工作，需要正装", 147],
+  ["章若宁", "18100181052", "女", "到店自然客流", "高消费", "已成交", 25, "偶尔来一次，但每次买得不少", 205],
+  ["伍思", "18200182053", "女", "微信", "", "新客户", 5, "朋友推荐加的微信，还没到店", 5],
+  ["简洁", "18300183054", "女", "小红书", "喜欢新款", "跟进中", 2, "喜欢小众设计，不想撞衫", 31],
+  ["崔浩然", "18400184055", "男", "到店自然客流", "回头客", "已成交", 17, "买过两件衬衫，偶尔来补货", 193],
+  ["方启明", "18500185056", "男", "老客转介绍", "", "已成交", null, "商务人士，需要正装", 168],
+  ["韦志强", "18600186057", "男", "到店自然客流", "", "跟进中", 4, "想买一件冬天的外套", 55],
+  ["毕晓东", "18700187058", "男", "其他", "", "已流失", null, "只问过价格，没有下文", 118],
+  ["常乐", "18800188059", "男", "抖音", "喜欢新款", "已成交", 22, "穿衣有想法，喜欢宽松版型", 108],
+  ["尹婷婷", "18900189060", "女", "线下活动", "职场女性", "已成交", 7, "活动上认识的，喜欢简约套装", 92],
 ];
 
-export const PURCHASES: Purchase[] = [
-  { id: "p001", customerId: "c001", purchasedAt: daysAgo(1), amount: 1280, note: "秋季风衣 + 打底衫" },
-  { id: "p002", customerId: "c001", purchasedAt: daysAgo(35), amount: 880, note: "针织开衫" },
-  { id: "p003", customerId: "c001", purchasedAt: daysAgo(72), amount: 1560, note: "夏季连衣裙两件" },
-  { id: "p004", customerId: "c003", purchasedAt: daysAgo(5), amount: 690, note: "宽松卫衣 + 休闲裤" },
-  { id: "p005", customerId: "c003", purchasedAt: daysAgo(52), amount: 420, note: "童装亲子款" },
-  { id: "p006", customerId: "c007", purchasedAt: daysAgo(41), amount: 2100, note: "商务衬衫三件" },
-  { id: "p007", customerId: "c010", purchasedAt: daysAgo(8), amount: 960, note: "基础款西装外套" },
-  { id: "p008", customerId: "c012", purchasedAt: daysAgo(2), amount: 1580, note: "设计师联名款连衣裙" },
-  { id: "p009", customerId: "c012", purchasedAt: daysAgo(21), amount: 300, note: "配饰 · 丝巾" },
-  { id: "p010", customerId: "c012", purchasedAt: daysAgo(63), amount: 1180, note: "春季薄外套" },
-  { id: "p011", customerId: "c014", purchasedAt: daysAgo(61), amount: 760, note: "羊绒围巾" },
+const createdDaysById = new Map<string, number>();
+
+const customers: Customer[] = ROSTER.map((row, index) => {
+  const [name, phone, gender, source, tags, status, nextIn, note, createdAgo] = row;
+  const id = "c" + String(index + 1).padStart(3, "0");
+  createdDaysById.set(id, createdAgo);
+
+  return {
+    id,
+    name,
+    phone,
+    gender,
+    source,
+    tags: tags ? tags.split("/").filter((item) => item !== "") : [],
+    status,
+    nextFollowUpAt: nextIn === null ? null : daysAgo(-nextIn),
+    note,
+    createdAt: daysAgo(createdAgo),
+    deletedAt: null,
+  };
+});
+
+/* ------------------------------------------------------------------
+   消费记录
+   ------------------------------------------------------------------ */
+
+const PURCHASE_NOTES = [
+  "秋季风衣",
+  "打底衫两件",
+  "针织开衫",
+  "连衣裙",
+  "羊毛大衣",
+  "羽绒服",
+  "西装外套",
+  "阔腿裤",
+  "衬衫三件",
+  "羊绒围巾",
+  "基础款 T 恤",
+  "半身裙",
+  "针织套装",
+  "牛仔外套",
+  "连帽卫衣",
+  "通勤西装 + 西裤",
+  "真丝衬衫",
+  "风衣 + 腰带",
+  "毛呢半裙",
+  "羽绒马甲",
+  "长款大衣",
+  "小香风外套",
+  "休闲套装",
+  "高腰牛仔裤",
+  "雪纺衬衫",
+  "棉麻长裙",
+  "针织连衣裙",
+  "皮衣",
+  "丝巾 + 帽子",
+  "运动套装",
 ];
+
+const purchases: Purchase[] = [];
+let purchaseSeq = 0;
+
+function addPurchase(customerId: string, daysBack: number, amount: number, note: string) {
+  purchaseSeq += 1;
+  purchases.push({
+    id: "p" + String(purchaseSeq).padStart(3, "0"),
+    customerId,
+    purchasedAt: daysAgo(daysBack),
+    amount,
+    note,
+  });
+}
+
+/** 金额分布：多数是常规单，偶尔有大单 */
+function randomAmount(): number {
+  const roll = random();
+  if (roll < 0.12) return Math.round((3000 + random() * 3200) / 10) * 10;
+  if (roll < 0.55) return Math.round((800 + random() * 1400) / 10) * 10;
+  return Math.round((2200 + random() * 900) / 10) * 10;
+}
+
+const buyers = customers.filter((item) => item.status === "已成交");
+
+// 1) 老客户的消费历史（一个月以前）
+for (const customer of buyers) {
+  const created = createdDaysById.get(customer.id) ?? 0;
+  if (created <= 30) continue;
+
+  const count = Math.floor(random() * 4);
+  for (let i = 0; i < count; i += 1) {
+    const daysBack = 30 + Math.floor(random() * (created - 30));
+    addPurchase(customer.id, daysBack, randomAmount(), pick(PURCHASE_NOTES));
+  }
+}
+
+// 2) 本月的消费：按已经过去的天数决定笔数，
+//    这样不管哪天打开，首页的「本月销售金额」都像个正常营业的店。
+const dayOfMonth = TODAY.getDate();
+const thisMonthTarget = Math.max(3, Math.min(26, Math.round(dayOfMonth * 1.7)));
+
+let placed = 0;
+let guard = 0;
+while (placed < thisMonthTarget && guard < 800) {
+  guard += 1;
+  const customer = buyers[Math.floor(random() * buyers.length)];
+  const daysBack = Math.floor(random() * dayOfMonth);
+  const created = createdDaysById.get(customer.id) ?? 0;
+  if (daysBack >= created) continue;
+  addPurchase(customer.id, daysBack, randomAmount(), pick(PURCHASE_NOTES));
+  placed += 1;
+}
+
+/* ------------------------------------------------------------------
+   跟进记录
+   ------------------------------------------------------------------ */
+
+const FOLLOW_UP_TEXTS = [
+  "电话回访，告知秋季新款已经到店。",
+  "微信发送了新款实拍图，客户说周末来看看。",
+  "到店试穿后加了微信，顺手发了搭配建议。",
+  "客户咨询是否有大码，已帮她确认库存。",
+  "会员日通知，客户表示会留意。",
+  "回访上次买的衣服穿着是否合适。",
+  "客户说最近比较忙，约了下周再联系。",
+  "推荐了三套通勤搭配，客户比较感兴趣。",
+  "客户想找一件参加婚礼的外套，已发图过去。",
+  "告知季末清仓的时间，客户说会来逛。",
+  "客户反馈尺码偏小，已安排换货。",
+  "微信沟通生日优惠，客户很开心。",
+  "客户带朋友一起来过，顺手加了朋友的微信。",
+  "通知到货情况，客户说再考虑一下。",
+  "客户问羽绒服什么时候上，已记录需求。",
+  "发了新品到店的短视频，客户已读。",
+  "电话没接通，发了微信留言。",
+  "客户说要和家里商量一下再决定。",
+  "推荐了基础款打底衫，客户当天就下单了一件。",
+  "客户喜欢的面料暂时缺货，已登记补货。",
+  "沟通穿搭需求，客户偏爱简约风格。",
+  "客户问有没有亲子款，已拍照发过去。",
+  "邀请参加周末门店的搭配活动。",
+  "客户近期在出差，说回来再联系。",
+  "购后回访，客户说很满意。",
+  "提醒客户会员积分可以兑换。",
+  "客户想给妈妈买一件外套，已推荐了几款。",
+  "发了当季流行色参考，客户有回应。",
+  "客户问到店路线，已发送定位。",
+  "加了微信之后一直没有回复。",
+  "电话沟通预算，客户说控制在两千以内。",
+  "客户说等发工资再来看看。",
+  "推荐了当季的主力款，客户比较心动。",
+  "客户带着朋友一起到店，成交了两件。",
+  "询问是否需要预留，客户说先不用。",
+  "客户想要同款不同色，已确认有货。",
+  "通知客户之前预定的衣服到店了。",
+  "客户说上次买的很好穿，想再买一件。",
+  "发了换季护理建议，客户回复了谢谢。",
+  "客户表示暂时不需要，后续再跟进。",
+  "电话确认到店时间，客户说周六下午。",
+  "客户提到喜欢新中式风格，已记录下来。",
+  "推荐了几款显瘦版型，客户想找时间试穿。",
+  "客户问能不能邮寄，已说明是门店自提。",
+  "客户说同事也想要，帮忙问了下尺码。",
+];
+
+const followUps: FollowUp[] = [];
+let followSeq = 0;
+
+function addFollowUp(
+  customerId: string,
+  daysBack: number,
+  content: string,
+  result: string,
+  nextFollowUpAt: string | null
+) {
+  followSeq += 1;
+  followUps.push({
+    id: "f" + String(followSeq).padStart(3, "0"),
+    customerId,
+    followedAt: daysAgo(daysBack),
+    content,
+    result,
+    nextFollowUpAt,
+  });
+}
+
+for (const customer of customers) {
+  const created = createdDaysById.get(customer.id) ?? 0;
+
+  // 已经流失的客户：只留一条很久以前的记录
+  if (customer.status === "已流失") {
+    addFollowUp(
+      customer.id,
+      Math.max(created - 20, 20),
+      random() < 0.5 ? "加了微信之后一直没有回复。" : "客户表示暂时不需要，后续再跟进。",
+      random() < 0.5 ? "联系不上" : "暂时不需要",
+      null
+    );
+    continue;
+  }
+
+  const count = 1 + Math.floor(random() * 3);
+  const dayOffsets: number[] = [];
+  for (let i = 0; i < count; i += 1) {
+    dayOffsets.push(Math.floor(random() * Math.max(created - 1, 2)));
+  }
+  // 数字小的更近，排在最前面
+  dayOffsets.sort((a, b) => a - b);
+
+  dayOffsets.forEach((daysBack, index) => {
+    const isLatest = index === 0;
+    addFollowUp(
+      customer.id,
+      daysBack,
+      pick(FOLLOW_UP_TEXTS),
+      pick(FOLLOW_UP_RESULTS),
+      // 最近一次的跟进，要和客户资料上的"下次跟进时间"保持一致
+      isLatest ? customer.nextFollowUpAt : null
+    );
+  });
+}
+
+export const CUSTOMERS = customers;
+export const PURCHASES = purchases;
+export const FOLLOW_UPS = followUps;

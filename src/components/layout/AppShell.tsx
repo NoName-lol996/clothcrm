@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import WelcomeCard from "@/components/layout/WelcomeCard";
 import { useData } from "@/lib/store";
 
 const NAV_ITEMS = [
@@ -73,6 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="mx-auto w-full max-w-[1120px] flex-1 px-6 py-10 md:py-14">
+        <WelcomeCard />
         {children}
       </main>
 
@@ -80,7 +82,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-black/[0.08] pt-5 text-xs leading-relaxed text-ink-3">
           <span>ClothCRM · 服装门店客户管理与跟进工具</span>
           <span className="text-hairline">|</span>
-          <span>数据保存在这台电脑的浏览器里</span>
+          <span>演示版：所有数据只保存在你自己的浏览器里，可随意试用</span>
           <span className="text-hairline">|</span>
           <button
             type="button"
