@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Search, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Search, Trash2 } from "lucide-react";
 import type { CustomerWithSpending } from "@/lib/derived";
 import { CUSTOMER_SOURCES, CUSTOMER_STATUSES } from "@/lib/constants";
 import { useData } from "@/lib/store";
@@ -12,6 +12,17 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const ALL = "全部";
+
+/** 可以排序的两列 */
+type SortKey = "recent" | "total";
+type SortDir = "asc" | "desc";
+
+/** 表头上的小排序符号：未排序时是浅灰的上下箭头 */
+function SortIcon({ state }: { state: SortDir | null }) {
+  if (state === "asc") return <ArrowUp size={13} className="text-ink" />;
+  if (state === "desc") return <ArrowDown size={13} className="text-ink" />;
+  return <ArrowUpDown size={13} className="text-ink-3 opacity-45" />;
+}
 
 export default function CustomerTable({
   customers,
@@ -24,16 +35,49 @@ export default function CustomerTable({
   const [status, setStatus] = useState<string>(ALL);
   const [source, setSource] = useState<string>(ALL);
   const [pendingTrash, setPendingTrash] = useState<CustomerWithSpending | null>(null);
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
+
+  /** 点一下升序，再点一下降序，第三下恢复默认 */
+  function toggleSort(key: SortKey) {
+    setSort((prev) => {
+      if (!prev || prev.key !== key) return { key, dir: "asc" };
+      if (prev.dir === "asc") return { key, dir: "desc" };
+      return null;
+    });
+  }
 
   const filtered = useMemo(() => {
-    const key = keyword.trim();
+    const text = keyword.trim();
     return customers.filter((customer) => {
-      if (key && !customer.name.includes(key) && !customer.phone.includes(key)) return false;
+      if (text && !customer.name.includes(text) && !customer.phone.includes(text)) return false;
       if (status !== ALL && customer.status !== status) return false;
       if (source !== ALL && customer.source !== source) return false;
       return true;
     });
   }, [customers, keyword, status, source]);
+
+  /** 排序：没有数据的（在表格里显示为「—」）永远排在最后 */
+  const visible = useMemo(() => {
+    if (!sort) return filtered;
+
+    const valueOf = (customer: CustomerWithSpending): number | null => {
+      if (sort.key === "total") {
+        return customer.spending.totalSpent > 0 ? customer.spending.totalSpent : null;
+      }
+      const date = customer.spending.lastPurchaseAt;
+      if (!date) return null;
+      // 2026-08-15 → 20260815，直接比大小就行
+      return Number(date.replace(/-/g, ""));
+    };
+
+    const withData = filtered.filter((customer) => valueOf(customer) !== null);
+    const withoutData = filtered.filter((customer) => valueOf(customer) === null);
+    const factor = sort.dir === "asc" ? 1 : -1;
+
+    withData.sort((a, b) => ((valueOf(a) as number) - (valueOf(b) as number)) * factor);
+
+    return [...withData, ...withoutData];
+  }, [filtered, sort]);
 
   const statusOptions = [ALL, ...CUSTOMER_STATUSES];
 
@@ -99,22 +143,42 @@ export default function CustomerTable({
                 <th>客户</th>
                 <th>手机号</th>
                 <th>来源</th>
-                <th>最近消费</th>
-                <th>累计消费</th>
+                <th>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("recent")}
+                    title="点击排序"
+                    className="inline-flex cursor-pointer items-center gap-1 transition hover:text-ink"
+                  >
+                    最近消费
+                    <SortIcon state={sort?.key === "recent" ? sort.dir : null} />
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("total")}
+                    title="点击排序"
+                    className="inline-flex cursor-pointer items-center gap-1 transition hover:text-ink"
+                  >
+                    累计消费
+                    <SortIcon state={sort?.key === "total" ? sort.dir : null} />
+                  </button>
+                </th>
                 <th>状态</th>
                 <th>下次跟进</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {visible.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-sm text-ink-3">
                     没有符合条件的客户，换个关键词试试。
                   </td>
                 </tr>
               ) : (
-                filtered.map((customer) => (
+                visible.map((customer) => (
                   <tr key={customer.id}>
                     <td>
                       <Link href={"/customers/" + customer.id} className="flex items-center gap-3">

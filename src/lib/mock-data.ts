@@ -197,14 +197,14 @@ function randomAmount(): number {
 
 const buyers = customers.filter((item) => item.status === "已成交");
 
-// 1) 老客户的消费历史（一个月以前）
+// 1) 状态是「已成交」的客户，一定至少有一笔消费（逻辑上必须对得上）
 for (const customer of buyers) {
   const created = createdDaysById.get(customer.id) ?? 0;
-  if (created <= 30) continue;
+  const count = 1 + Math.floor(random() * 3);
 
-  const count = Math.floor(random() * 4);
   for (let i = 0; i < count; i += 1) {
-    const daysBack = 30 + Math.floor(random() * (created - 30));
+    const span = Math.max(created - 1, 1);
+    const daysBack = Math.floor(random() * span);
     addPurchase(customer.id, daysBack, randomAmount(), pick(PURCHASE_NOTES));
   }
 }
