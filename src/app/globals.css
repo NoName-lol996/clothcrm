@@ -303,3 +303,73 @@
 .gc-panel {
   animation: gc-pop-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+/* ------------------------------------------------------------------
+   窄屏下的客户列表：表格会自动变成一张张卡片，不用左右滑动。
+   只影响宽度小于 1024 像素的屏幕，电脑上还是原来的表格。
+   （放在 @layer 外面，优先级最高，能覆盖 Tailwind 的宽度设定）
+   ------------------------------------------------------------------ */
+@media (max-width: 1023px) {
+  .gc-table {
+    min-width: 0;
+  }
+
+  .gc-table thead {
+    display: none;
+  }
+
+  .gc-table,
+  .gc-table tbody,
+  .gc-table tr,
+  .gc-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .gc-table tr {
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 16px;
+    padding: 4px 0;
+    margin-bottom: 12px;
+  }
+
+  .gc-table tbody tr:hover {
+    background-color: #ffffff;
+  }
+
+  .gc-table td {
+    border-top: none;
+    padding: 7px 18px;
+  }
+
+  .gc-table td[data-label] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .gc-table td[data-label]::before {
+    content: attr(data-label);
+    flex: none;
+    font-size: 13px;
+    color: #86868b;
+  }
+
+  .gc-table td[data-label="客户"] {
+    display: block;
+    padding-top: 14px;
+    padding-bottom: 12px;
+  }
+
+  .gc-table td[data-label="客户"]::before,
+  .gc-table td[data-label="操作"]::before {
+    content: none;
+  }
+
+  .gc-table td[data-label="操作"] {
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 14px;
+  }
+}

@@ -2,7 +2,15 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Search, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Trash2,
+} from "lucide-react";
 import type { CustomerWithSpending } from "@/lib/derived";
 import { CUSTOMER_SOURCES, CUSTOMER_STATUSES } from "@/lib/constants";
 import { useData } from "@/lib/store";
@@ -12,8 +20,9 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const ALL = "全部";
+/** 一页显示多少位客户 */
+const PAGE_SIZE = 20;
 
-/** 可以排序的两列 */
 type SortKey = "recent" | "total";
 type SortDir = "asc" | "desc";
 
@@ -22,6 +31,22 @@ function SortIcon({ state }: { state: SortDir | null }) {
   if (state === "asc") return <ArrowUp size={13} className="text-ink" />;
   if (state === "desc") return <ArrowDown size={13} className="text-ink" />;
   return <ArrowUpDown size={13} className="text-ink-3 opacity-45" />;
+}
+
+/** 页码按钮该显示哪些：页数多的时候中间用省略号 */
+function pageItems(current: number, total: number): (number | "gap")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+
+  const items: (number | "gap")[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+
+  if (start > 2) items.push("gap");
+  for (let i = start; i <= end; i += 1) items.push(i);
+  if (end < total - 1) items.push("gap");
+  items.push(total);
+
+  return items;
 }
 
 export default function CustomerTable({
@@ -36,6 +61,8 @@ export default function CustomerTable({
   const [source, setSource] = useState<string>(ALL);
   const [pendingTrash, setPendingTrash] = useState<CustomerWithSpending | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
+  const [page, setPage] = useState(1);
+  const [jumpValue, setJumpValue] = useState("");
 
   /** 点一下升序，再点一下降序，第三下恢复默认 */
   function toggleSort(key: SortKey) {
@@ -44,6 +71,7 @@ export default function CustomerTable({
       if (prev.dir === "asc") return { key, dir: "desc" };
       return null;
     });
+    setPage(1);
   }
 
   const filtered = useMemo(() => {
@@ -56,8 +84,8 @@ export default function CustomerTable({
     });
   }, [customers, keyword, status, source]);
 
-  /** 排序：没有数据的（在表格里显示为「—」）永远排在最后 */
-  const visible = useMemo(() => {
+  /** 排序作用在全部筛选结果上，然后再分页——不是只排当前这一页 */
+  const sorted = useMemo(() => {
     if (!sort) return filtered;
 
     const valueOf = (customer: CustomerWithSpending): number | null => {
@@ -76,8 +104,27 @@ export default function CustomerTable({
 
     withData.sort((a, b) => ((valueOf(a) as number) - (valueOf(b) as number)) * factor);
 
+    // 没有消费记录的（表格里显示为「—」）永远排在最后
     return [...withData, ...withoutData];
   }, [filtered, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const from = sorted.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const to = Math.min(currentPage * PAGE_SIZE, sorted.length);
+
+  function applyJump() {
+    const text = jumpValue.trim();
+    if (!text) return;
+    const value = Number(text);
+    if (Number.isNaN(value)) {
+      setJumpValue("");
+      return;
+    }
+    setPage(Math.min(Math.max(Math.round(value), 1), totalPages));
+    setJumpValue("");
+  }
 
   const statusOptions = [ALL, ...CUSTOMER_STATUSES];
 
@@ -92,14 +139,20 @@ export default function CustomerTable({
               className="gc-input pl-10"
               placeholder="搜索姓名或手机号"
               value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
+              onChange={(event) => {
+                setKeyword(event.target.value);
+                setPage(1);
+              }}
             />
           </div>
 
           <select
             className="gc-input gc-select sm:w-[170px]"
             value={source}
-            onChange={(event) => setSource(event.target.value)}
+            onChange={(event) => {
+              setSource(event.target.value);
+              setPage(1);
+            }}
           >
             <option value={ALL}>全部来源</option>
             {CUSTOMER_SOURCES.map((item) => (
@@ -116,7 +169,10 @@ export default function CustomerTable({
             <button
               key={item}
               type="button"
-              onClick={() => setStatus(item)}
+              onClick={() => {
+                setStatus(item);
+                setPage(1);
+              }}
               className={
                 "rounded-full px-3.5 py-1.5 text-[13px] font-medium transition " +
                 (status === item
@@ -133,10 +189,10 @@ export default function CustomerTable({
       <div className="gc-card overflow-hidden">
         <div className="flex items-baseline justify-between px-6 pb-2 pt-6">
           <h2 className="gc-title-md">客户列表</h2>
-          <span className="text-[13px] text-ink-3">共 {filtered.length} 位</span>
+          <span className="text-[13px] text-ink-3">共 {sorted.length} 位</span>
         </div>
 
-        <div className="overflow-x-auto px-3 pb-4">
+        <div className="overflow-x-auto px-3 pb-2">
           <table className="gc-table min-w-[880px]">
             <thead>
               <tr>
@@ -171,16 +227,16 @@ export default function CustomerTable({
               </tr>
             </thead>
             <tbody>
-              {visible.length === 0 ? (
+              {sorted.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-sm text-ink-3">
                     没有符合条件的客户，换个关键词试试。
                   </td>
                 </tr>
               ) : (
-                visible.map((customer) => (
+                pageRows.map((customer) => (
                   <tr key={customer.id}>
-                    <td>
+                    <td data-label="客户">
                       <Link href={"/customers/" + customer.id} className="flex items-center gap-3">
                         <Avatar name={customer.name} size={34} />
                         <span>
@@ -195,23 +251,29 @@ export default function CustomerTable({
                         </span>
                       </Link>
                     </td>
-                    <td className="text-ink-2">{customer.phone}</td>
-                    <td className="text-ink-2">{customer.source}</td>
-                    <td className="text-ink-2">
+                    <td data-label="手机号" className="text-ink-2">
+                      {customer.phone}
+                    </td>
+                    <td data-label="来源" className="text-ink-2">
+                      {customer.source}
+                    </td>
+                    <td data-label="最近消费" className="text-ink-2">
                       {customer.spending.lastPurchaseAt
                         ? formatMonthDay(customer.spending.lastPurchaseAt)
                         : "—"}
                     </td>
-                    <td className="font-medium">
+                    <td data-label="累计消费" className="font-medium">
                       {customer.spending.totalSpent > 0
                         ? formatMoney(customer.spending.totalSpent)
                         : "—"}
                     </td>
-                    <td>
+                    <td data-label="状态">
                       <StatusBadge status={customer.status} />
                     </td>
-                    <td className="text-ink-2">{describeFollowUp(customer.nextFollowUpAt)}</td>
-                    <td className="text-right">
+                    <td data-label="下次跟进" className="text-ink-2">
+                      {describeFollowUp(customer.nextFollowUpAt)}
+                    </td>
+                    <td data-label="操作" className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
@@ -237,6 +299,82 @@ export default function CustomerTable({
             </tbody>
           </table>
         </div>
+
+        {/* 分页 */}
+        {sorted.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-black/[0.06] px-6 py-4">
+            <p className="text-[13px] text-ink-3">
+              共 {sorted.length} 位 · 第 {from}–{to} 位
+            </p>
+
+            {totalPages > 1 ? (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="上一页"
+                  disabled={currentPage === 1}
+                  onClick={() => setPage(currentPage - 1)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-2 transition hover:bg-canvas-2 disabled:opacity-30 disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                {pageItems(currentPage, totalPages).map((item, index) =>
+                  item === "gap" ? (
+                    <span key={"gap-" + index} className="px-1 text-[13px] text-ink-3">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setPage(item)}
+                      className={
+                        "inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-full px-2 text-[13px] font-medium transition " +
+                        (currentPage === item
+                          ? "bg-ink text-white"
+                          : "text-ink-2 hover:bg-canvas-2")
+                      }
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  aria-label="下一页"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setPage(currentPage + 1)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-2 transition hover:bg-canvas-2 disabled:opacity-30 disabled:hover:bg-transparent"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            ) : null}
+
+            {totalPages > 1 ? (
+              <div className="flex items-center gap-2 text-[13px] text-ink-3">
+                <span>跳至</span>
+                <input
+                  className="gc-input w-[56px] px-2 py-1 text-center text-[13px]"
+                  inputMode="numeric"
+                  placeholder={String(currentPage)}
+                  value={jumpValue}
+                  onChange={(event) => setJumpValue(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      applyJump();
+                    }
+                  }}
+                  onBlur={applyJump}
+                />
+                <span>页 · 共 {totalPages} 页</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <ConfirmDialog
